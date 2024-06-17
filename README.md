@@ -1,6 +1,7 @@
 # PyramidInfer: Pyramid KV Cache Compression for High-throughput LLM Inference
 
 Dongjie Yang, Xiaodong Han, Yan Gao, Yao Hu, Shilin Zhang, Hai Zhao
+
 [![arXiv](https://img.shields.io/badge/arXiv-2110.06707-b31b1b.svg)](https://arxiv.org/abs/2405.12532)
 
 ## Updates
@@ -25,6 +26,26 @@ pip install -r requirements.txt
 
 python simple_infer_comparison.py --model_name_or_path meta-llama/Llama-2-7b-hf
 ```
+
+### Implementation of PyramidInfer
+Please check the [models/modeling_llama_pyramidinfer.py](https://github.com/mutonix/pyramidinfer/blob/9589c02151c3f6054bf569012f8e24ab7037616f/models/modeling_llama_pyramidinfer.py#L758) to see the implementation of PyramidInfer. More details can be found in the paper.
+
+### PyramidInfer Configuration
+The PyramidInfer has several hyperparameters that can be tuned to achieve better performance. The hyperparameters are defined in the [configs](configs) folder, which are recommended settings for the PyramidInfer.
+
+**Prefilling Stage**
+- `prefill_recent_ratio`: The ratio of the recent tokens not to be compressed and be used to find PvCs.
+- `prefill_decay_ratio`: The decay ratio of gradually reducing the context length as the layer goes deeper.
+- `prefill_decay_strategy`: The strategy to decay the context length. It can be `linear` or `cosine`.
+- `min_context_length`: The minimum context length to prevent the context length from being too small.
+- `layerwise_downsample_interval`: The interval to downsample the context length layer by layer. For larger models with more layers, we do not need to downsample the context length for every layer. 
+
+**Generation Stage**
+- `gen_recent_ratio`: The ratio of the recent tokens not to be compressed and be used to find PvCs in the generation stage.
+- `gen_decay_ratio`: The decay ratio of gradually reducing the context length as the layer goes deeper in the generation stage. It is a little different from the prefill stage, which can be check in [here](https://github.com/mutonix/pyramidinfer/blob/9589c02151c3f6054bf569012f8e24ab7037616f/models/modeling_llama_pyramidinfer.py#L820).
+- `gen_decay_strategy`: The strategy to decay the context length in the generation stage. It can be `linear` or `cosine`.
+- `exceed_length_to_compress`: The threshold to compress the additionally generated tokens. If the number of generated tokens exceeds this threshold, we will compress the additionally generated tokens.
+
 
 ## Citation
 ```
