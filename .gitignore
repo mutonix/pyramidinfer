@@ -1,0 +1,7 @@
+.vscode
+__pycache__
+my*
+cache*
+.DS_Store
+*.ipynb
+*backup*

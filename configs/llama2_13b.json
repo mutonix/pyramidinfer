@@ -1,0 +1,18 @@
+{
+    "model": "llama2",
+    "size": "13B",
+    "prefill_stage": {
+        "prefill_recent_ratio": 0.2,
+        "prefill_decay_ratio": 0.8,
+        "prefill_decay_strategy": "cosine",
+        "min_context_length": 64,
+        "layerwise_downsample_interval": 2,
+        "streamingllm_sink_len": 4
+    },
+    "generation_stage": {
+        "gen_recent_ratio": 0.2,
+        "gen_decay_ratio": 0.1,
+        "gen_decay_strategy": "cosine",
+        "exceed_length_to_compress": 16
+    }
+}
