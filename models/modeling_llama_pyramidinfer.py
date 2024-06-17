@@ -698,6 +698,7 @@ class LlamaModel(LlamaPreTrainedModel):
             layerwise_downsample_interval = self.config.layerwise_downsample_interval if hasattr(self.config, "layerwise_downsample_interval") else 1
             min_context_length = self.config.min_context_length if hasattr(self.config, "min_context_length") else 64
             streamingllm_sink_len = self.config.streamingllm_sink_len if hasattr(self.config, "streamingllm_sink_len") else 64
+            distance_weight = self.config.distance_weight if hasattr(self.config, "distance_weight") else 1.0
             
             prefill_recent_ratio = self.config.prefill_recent_ratio if hasattr(self.config, "prefill_recent_ratio") else 0.2
             prefill_decay_ratio = self.config.prefill_decay_ratio if hasattr(self.config, "prefill_decay_ratio") else 0.9
@@ -773,7 +774,7 @@ class LlamaModel(LlamaPreTrainedModel):
                             attn_weights = layer_outputs[1].mean(dim=1) # average over attention heads
                             
                             recent2context_attn_weights = attn_weights[:, -(1 + prefill_recent_length):, :-(1 + prefill_recent_length)]
-                            recent2context_attn_weights *= torch.linspace(1.0, 1.2, recent2context_attn_weights.shape[1], device=recent2context_attn_weights.device)[None, :, None] # weight the recent2context attention weights by distance
+                            recent2context_attn_weights *= torch.linspace(1.0, distance_weight, recent2context_attn_weights.shape[1], device=recent2context_attn_weights.device)[None, :, None] # weight the recent2context attention weights by distance
                             recent2context_attn_weights = recent2context_attn_weights.mean(dim=-2) 
                             recent2context_attn_weights[:, :streamingllm_sink_len] = torch.finfo(recent2context_attn_weights.dtype).max # always keep the sink tokens
                             context_length = recent2context_attn_weights.shape[-1] 
@@ -815,7 +816,7 @@ class LlamaModel(LlamaPreTrainedModel):
                         if current_kv_seq_len - gen_recent_length - past_kv_seq_len >= exceed_length_to_compress:
                             attn_weights = layer_outputs[1].mean(dim=1) # average over attention heads
                             recent2context_attn_weights = attn_weights[:, -(1 + gen_recent_length):, -(1 + gen_recent_length + exceed_length_to_compress):-(1 + gen_recent_length)]
-                            recent2context_attn_weights *= torch.linspace(1.0, 1.2, recent2context_attn_weights.shape[1], device=recent2context_attn_weights.device)[None, :, None]
+                            recent2context_attn_weights *= torch.linspace(1.0, distance_weight, recent2context_attn_weights.shape[1], device=recent2context_attn_weights.device)[None, :, None]
                             recent2context_attn_weights = recent2context_attn_weights.mean(dim=-2) 
                             context_length = recent2context_attn_weights.shape[-1] * gen_decay_ratio
 

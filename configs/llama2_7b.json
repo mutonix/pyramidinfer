@@ -7,7 +7,8 @@
         "prefill_decay_strategy": "cosine",
         "min_context_length": 64,
         "layerwise_downsample_interval": 1,
-        "streamingllm_sink_len": 4
+        "streamingllm_sink_len": 4,
+        "distance_weight": 1.2
     },
     "generation_stage": {
         "gen_recent_ratio": 0.2,

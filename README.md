@@ -5,7 +5,7 @@ Dongjie Yang, Xiaodong Han, Yan Gao, Yao Hu, Shilin Zhang, Hai Zhao
 [![arXiv](https://img.shields.io/badge/arXiv-2110.06707-b31b1b.svg)](https://arxiv.org/abs/2405.12532)
 
 ## Updates
-- [2024-06-17] We release the code for PyramidInfer where the details can be found in [here](https://github.com/mutonix/pyramidinfer?tab=readme-ov-file#pyramidinfer-configuration).
+- [2024-06-17] We release the code for PyramidInfer where the details can be found in [here](https://github.com/mutonix/pyramidinfer?tab=readme-ov-file#implementation-of-pyramidinfer).
 
 [WIP] This repository is still under construction. We will release the full code to evaluate the performance of PyramidInfer using the OpenCompass.
 
@@ -42,7 +42,7 @@ The PyramidInfer has several hyperparameters that can be tuned to achieve better
 
 **Generation Stage**
 - `gen_recent_ratio`: The ratio of the recent tokens not to be compressed and be used to find PvCs in the generation stage.
-- `gen_decay_ratio`: The decay ratio of gradually reducing the context length as the layer goes deeper in the generation stage. It is a little different from the prefill stage, which can be check in [here](https://github.com/mutonix/pyramidinfer/blob/9589c02151c3f6054bf569012f8e24ab7037616f/models/modeling_llama_pyramidinfer.py#L820).
+- `gen_decay_ratio`: The decay ratio of gradually reducing the context length as the layer goes deeper in the generation stage. It is a little different from the prefill stage, which can be checked in [here](https://github.com/mutonix/pyramidinfer/blob/9589c02151c3f6054bf569012f8e24ab7037616f/models/modeling_llama_pyramidinfer.py#L820).
 - `gen_decay_strategy`: The strategy to decay the context length in the generation stage. It can be `linear` or `cosine`.
 - `exceed_length_to_compress`: The threshold to compress the additionally generated tokens. If the number of generated tokens exceeds this threshold, we will compress the additionally generated tokens.
 
