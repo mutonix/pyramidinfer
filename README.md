@@ -5,7 +5,7 @@ Dongjie Yang, Xiaodong Han, Yan Gao, Yao Hu, Shilin Zhang, Hai Zhao
 [![arXiv](https://img.shields.io/badge/arXiv-2110.06707-b31b1b.svg)](https://arxiv.org/abs/2405.12532)
 
 ## Updates
-- [2024-06-17] We release the code for PyramidInfer.
+- [2024-06-17] We release the code for PyramidInfer where the details can be found in [here](https://github.com/mutonix/pyramidinfer?tab=readme-ov-file#pyramidinfer-configuration).
 
 [WIP] This repository is still under construction. We will release the full code to evaluate the performance of PyramidInfer using the OpenCompass.
 
@@ -30,7 +30,7 @@ python simple_infer_comparison.py --model_name_or_path meta-llama/Llama-2-7b-hf
 ### Implementation of PyramidInfer
 Please check the [models/modeling_llama_pyramidinfer.py](https://github.com/mutonix/pyramidinfer/blob/9589c02151c3f6054bf569012f8e24ab7037616f/models/modeling_llama_pyramidinfer.py#L758) to see the implementation of PyramidInfer. More details can be found in the paper.
 
-### PyramidInfer Configuration
+#### PyramidInfer Configuration
 The PyramidInfer has several hyperparameters that can be tuned to achieve better performance. The hyperparameters are defined in the [configs](configs) folder, which are recommended settings for the PyramidInfer.
 
 **Prefilling Stage**
