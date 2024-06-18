@@ -97,6 +97,7 @@ As the ship entered orbit around Eridani Prime, the scientists eagerly prepared 
         pyramid_model.bfloat16().eval()
         print("Pyramidinfer Model GPU Memory Per GPU (MB): ", f"{torch.cuda.max_memory_allocated(device=pyramid_model.device) / 1024 / 1024:.3f}")
         # pyramid_model = torch.compile(pyramid_model, mode="max-autotune")
+        pyramid_model.config.pad_token_id = tokenizer.pad_token_id
         pyramid_config = json.load(open(args.pyramid_config))
         pyramid_model = load_pyramid_config(pyramid_model, pyramid_config)
 
@@ -133,7 +134,7 @@ As the ship entered orbit around Eridani Prime, the scientists eagerly prepared 
         print("Max New Tokens: ", args.max_new_tokens)
         
         input_ids = tokenizer([prompt_text] * args.pyramid_bsz, add_special_tokens=False, return_tensors='pt').input_ids
-        streamer = TextStreamer(tokenizer, skip_prompt=True) if args.pyramid_bsz == 1 else None
+        streamer = TextStreamer(tokenizer, skip_prompt=False) if args.pyramid_bsz == 1 else None
 
         input_ids = input_ids.to(pyramid_model.device)
         torch.cuda.reset_peak_memory_stats(device=pyramid_model.device)
@@ -164,7 +165,7 @@ As the ship entered orbit around Eridani Prime, the scientists eagerly prepared 
         print("Max New Tokens: ", args.max_new_tokens)
         
         input_ids = tokenizer([prompt_text] * args.original_bsz, add_special_tokens=False, return_tensors='pt').input_ids
-        streamer = TextStreamer(tokenizer, skip_prompt=True) if args.original_bsz == 1 else None
+        streamer = TextStreamer(tokenizer, skip_prompt=False) if args.original_bsz == 1 else None
         input_ids = input_ids.to(original_model.device) 
         torch.cuda.reset_peak_memory_stats(device=original_model.device)
         start_time = torch.cuda.Event(enable_timing=True)

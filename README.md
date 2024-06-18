@@ -1,4 +1,4 @@
-# PyramidInfer: Pyramid KV Cache Compression for High-throughput LLM Inference
+# [ACL 2024] PyramidInfer: Pyramid KV Cache Compression for High-throughput LLM Inference 
 
 Dongjie Yang, Xiaodong Han, Yan Gao, Yao Hu, Shilin Zhang, Hai Zhao
 
@@ -37,14 +37,14 @@ The PyramidInfer has several hyperparameters that can be tuned to achieve better
 - `prefill_recent_ratio`: The ratio of the recent tokens not to be compressed and be used to find PvCs.
 - `prefill_decay_ratio`: The decay ratio of gradually reducing the context length as the layer goes deeper.
 - `prefill_decay_strategy`: The strategy to decay the context length. It can be `linear` or `cosine`.
-- `min_context_length`: The minimum context length to prevent the context length from being too small.
-- `layerwise_downsample_interval`: The interval to downsample the context length layer by layer. For larger models with more layers, we do not need to downsample the context length for every layer. 
+- `min_context_length`: The minimum context length to prevent the context length from being too short.
+- `layerwise_downsample_interval`: The interval to downsample the context length layer by layer. For larger models with more layers, we do not need to downsample the context length for every layer, which can reduce the additional computations of finding PvCs.
 
 **Generation Stage**
 - `gen_recent_ratio`: The ratio of the recent tokens not to be compressed and be used to find PvCs in the generation stage.
 - `gen_decay_ratio`: The decay ratio of gradually reducing the context length as the layer goes deeper in the generation stage. It is a little different from the prefilling stage, which can be checked in [here](https://github.com/mutonix/pyramidinfer/blob/9589c02151c3f6054bf569012f8e24ab7037616f/models/modeling_llama_pyramidinfer.py#L820).
 - `gen_decay_strategy`: The strategy to decay the context length in the generation stage. It can be `linear` or `cosine`.
-- `exceed_length_to_compress`: The threshold to compress the additional generated tokens. If the number of generated tokens exceeds this threshold, we will compress the additional generated tokens.
+- `exceed_length_to_compress`: The threshold to compress the additional generated tokens. If the number of generated tokens exceeds this threshold, we will compress the additional generated tokens. **Note**: In the generation stage, we do not compress the prompt kv from the prefilling stage, but only compress the additional generated tokens in the generation stage.
 - `gen_compress_ratio`: If the number of additional generated tokens exceeds the threshold above, we will compress the additional generated tokens by this ratio.
 
 
