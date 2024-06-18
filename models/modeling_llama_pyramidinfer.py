@@ -707,6 +707,7 @@ class LlamaModel(LlamaPreTrainedModel):
             gen_recent_ratio = self.config.gen_recent_ratio if hasattr(self.config, "gen_recent_ratio") else 0.2
             gen_decay_ratio = self.config.gen_decay_ratio if hasattr(self.config, "gen_decay_ratio") else 0.9
             gen_decay_strategy = self.config.gen_decay_strategy if hasattr(self.config, "gen_decay_strategy") else "cosine"
+            gen_compress_ratio = self.config.gen_compress_ratio if hasattr(self.config, "gen_compress_ratio") else 0.9
             exceed_length_to_compress = self.config.exceed_length_to_compress if hasattr(self.config, "exceed_length_to_compress") else 1024
             
             prefill_recent_length = int(seq_length_with_past * prefill_recent_ratio)
@@ -818,7 +819,7 @@ class LlamaModel(LlamaPreTrainedModel):
                             recent2context_attn_weights = attn_weights[:, -(1 + gen_recent_length):, -(1 + gen_recent_length + exceed_length_to_compress):-(1 + gen_recent_length)]
                             recent2context_attn_weights *= torch.linspace(1.0, distance_weight, recent2context_attn_weights.shape[1], device=recent2context_attn_weights.device)[None, :, None]
                             recent2context_attn_weights = recent2context_attn_weights.mean(dim=-2) 
-                            context_length = recent2context_attn_weights.shape[-1] * gen_decay_ratio
+                            context_length = recent2context_attn_weights.shape[-1] * gen_compress_ratio
 
                             topk = max(int(context_length * schedule_gen_decay_ratio), 1)
                             recent2context_topk_indices = torch.topk(
