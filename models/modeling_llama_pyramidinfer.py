@@ -42,10 +42,12 @@ _CONFIG_FOR_DOC = "LlamaConfig"
 @dataclass
 class BaseModelOutputWithPastForPMT(BaseModelOutputWithPast):
     past_kv_seq_lens: Optional[List[int]] = None # record the length of past compressed key value states
+    recent_attn_weights: Optional[List[torch.Tensor]] = None # record the attention weights of the recent token
 
 @dataclass
 class CausalLMOutputWithPastForPMT(CausalLMOutputWithPast):
     past_kv_seq_lens: Optional[List[int]] = None # record the length of past compressed key value states
+    recent_attn_weights: Optional[List[torch.Tensor]] = None # record the attention weights of the recent token
 
 # Copied from transformers.models.bart.modeling_bart._make_causal_mask
 def _make_causal_mask(
@@ -629,6 +631,7 @@ class LlamaModel(LlamaPreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
         past_kv_seq_lens: Optional[List[int]] = None, # record the length of past compressed key value states
+        recent_attn_weights: Optional[List[torch.Tensor]] = None, # record the attention weights of the recent token
     ) -> Union[Tuple, BaseModelOutputWithPast]:
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -700,19 +703,17 @@ class LlamaModel(LlamaPreTrainedModel):
             streamingllm_sink_len = self.config.streamingllm_sink_len if hasattr(self.config, "streamingllm_sink_len") else 64
             distance_weight = self.config.distance_weight if hasattr(self.config, "distance_weight") else 1.0
             
-            prefill_recent_ratio = self.config.prefill_recent_ratio if hasattr(self.config, "prefill_recent_ratio") else 0.2
+            recent_ratio = self.config.recent_ratio if hasattr(self.config, "recent_ratio") else 0.2
             prefill_decay_ratio = self.config.prefill_decay_ratio if hasattr(self.config, "prefill_decay_ratio") else 0.9
             prefill_decay_strategy = self.config.prefill_decay_strategy if hasattr(self.config, "prefill_decay_strategy") else "cosine"
             
-            gen_recent_ratio = self.config.gen_recent_ratio if hasattr(self.config, "gen_recent_ratio") else 0.2
             gen_decay_ratio = self.config.gen_decay_ratio if hasattr(self.config, "gen_decay_ratio") else 0.9
             gen_decay_strategy = self.config.gen_decay_strategy if hasattr(self.config, "gen_decay_strategy") else "cosine"
             gen_compress_ratio = self.config.gen_compress_ratio if hasattr(self.config, "gen_compress_ratio") else 0.9
             exceed_length_to_compress = self.config.exceed_length_to_compress if hasattr(self.config, "exceed_length_to_compress") else 1024
             
-            prefill_recent_length = int(seq_length_with_past * prefill_recent_ratio)
-            gen_recent_length = int(seq_length_with_past * gen_recent_ratio)
-            min_context_length = min(min_context_length, seq_length_with_past - 1 - prefill_recent_length)
+            recent_length = int(seq_length_with_past * recent_ratio)
+            min_context_length = min(min_context_length, seq_length_with_past - 1 - recent_length)
 
         for idx, decoder_layer in enumerate(self.layers):
             if output_hidden_states:
@@ -774,7 +775,7 @@ class LlamaModel(LlamaPreTrainedModel):
                         if idx != self.config.num_hidden_layers - 1 and (idx % layerwise_downsample_interval) == 0:
                             attn_weights = layer_outputs[1].mean(dim=1) # average over attention heads
                             
-                            recent2context_attn_weights = attn_weights[:, -(1 + prefill_recent_length):, :-(1 + prefill_recent_length)]
+                            recent2context_attn_weights = attn_weights[:, -(1 + recent_length):, :-(1 + recent_length)]
                             recent2context_attn_weights *= torch.linspace(1.0, distance_weight, recent2context_attn_weights.shape[1], device=recent2context_attn_weights.device)[None, :, None] # weight the recent2context attention weights by distance
                             recent2context_attn_weights = recent2context_attn_weights.mean(dim=-2) 
                             recent2context_attn_weights[:, :streamingllm_sink_len] = torch.finfo(recent2context_attn_weights.dtype).max # always keep the sink tokens
@@ -793,17 +794,22 @@ class LlamaModel(LlamaPreTrainedModel):
                                 # gather the original position ids for the selected topk indices
                                 selected_position_ids = selected_position_ids.to(recent2context_topk_indices.device)
                                 selected_position_ids = torch.cat([
-                                    torch.gather(selected_position_ids[:, :-(1 + prefill_recent_length)], dim=-1, index=recent2context_topk_indices),
-                                    selected_position_ids[:, -(1 + prefill_recent_length):],
+                                    torch.gather(selected_position_ids[:, :-(1 + recent_length)], dim=-1, index=recent2context_topk_indices),
+                                    selected_position_ids[:, -(1 + recent_length):],
                                 ], dim=-1)
 
-                                compressed_hidden_states = torch.gather(hidden_states[:, :-(1 + prefill_recent_length)], dim=-2, index=recent2context_topk_indices.unsqueeze(-1).expand(-1, -1, hidden_states.shape[-1]))
-                                hidden_states = torch.cat([compressed_hidden_states, hidden_states[:, -(1 + prefill_recent_length):]], dim=1)
+                                compressed_hidden_states = torch.gather(hidden_states[:, :-(1 + recent_length)], dim=-2, index=recent2context_topk_indices.unsqueeze(-1).expand(-1, -1, hidden_states.shape[-1]))
+                                hidden_states = torch.cat([compressed_hidden_states, hidden_states[:, -(1 + recent_length):]], dim=1)
 
                         if past_kv_seq_lens is not None:
                             past_kv_seq_lens.append(layer_outputs[2][0].shape[-2])
+                        if recent_attn_weights is not None:
+                            recent_attn_weights.append(attn_weights[:, -(1 + recent_length):])
                     else:
                         ### generation stage ###
+                        attn_weights = layer_outputs[1].mean(dim=1) # average over attention heads
+                        recent_attn_weights[idx] = torch.cat([recent_attn_weights[idx], torch.zeros((recent_attn_weights[idx].shape[0], recent_attn_weights[idx].shape[1], 1), device=recent_attn_weights[idx].device)], dim=-1)
+                        attn_weights = torch.cat([recent_attn_weights[idx], attn_weights], dim=-2)                    
                         past_kv_seq_len = past_kv_seq_lens[idx]
                         current_kv_seq_len = next_decoder_cache[-1][0].shape[-2]
 
@@ -814,9 +820,8 @@ class LlamaModel(LlamaPreTrainedModel):
                         else:
                             schedule_gen_decay_ratio = gen_decay_ratio
 
-                        if current_kv_seq_len - gen_recent_length - past_kv_seq_len >= exceed_length_to_compress:
-                            attn_weights = layer_outputs[1].mean(dim=1) # average over attention heads
-                            recent2context_attn_weights = attn_weights[:, -(1 + gen_recent_length):, -(1 + gen_recent_length + exceed_length_to_compress):-(1 + gen_recent_length)]
+                        if current_kv_seq_len - recent_length - past_kv_seq_len >= exceed_length_to_compress:
+                            recent2context_attn_weights = attn_weights[:, -(1 + recent_length):, -(1 + recent_length + exceed_length_to_compress):-(1 + recent_length)]
                             recent2context_attn_weights *= torch.linspace(1.0, distance_weight, recent2context_attn_weights.shape[1], device=recent2context_attn_weights.device)[None, :, None]
                             recent2context_attn_weights = recent2context_attn_weights.mean(dim=-2) 
                             context_length = recent2context_attn_weights.shape[-1] * gen_compress_ratio
@@ -832,17 +837,26 @@ class LlamaModel(LlamaPreTrainedModel):
                             # gather key_states from recent2context_topk_indices
                             gather_indices = recent2context_topk_indices[:, None, :, None].expand(-1, key_states.shape[1], -1, key_states.shape[3])
                             key_states = torch.cat([
-                                key_states[:, :,  :-(1 + gen_recent_length + exceed_length_to_compress)],
-                                torch.gather(key_states[:, :,  -(1 + gen_recent_length + exceed_length_to_compress):-(1 + gen_recent_length)], dim=-2, index=gather_indices),
-                                key_states[:, :, -(1 + gen_recent_length):],
+                                key_states[:, :,  :-(1 + recent_length + exceed_length_to_compress)],
+                                torch.gather(key_states[:, :,  -(1 + recent_length + exceed_length_to_compress):-(1 + recent_length)], dim=-2, index=gather_indices),
+                                key_states[:, :, -(1 + recent_length):],
                             ], dim=-2)
                             value_states = torch.cat([
-                                value_states[:, :,  :-(1 + gen_recent_length + exceed_length_to_compress)],
-                                torch.gather(value_states[:, :,  -(1 + gen_recent_length + exceed_length_to_compress):-(1 + gen_recent_length)], dim=-2, index=gather_indices),
-                                value_states[:, :, -(1 + gen_recent_length):],
+                                value_states[:, :,  :-(1 + recent_length + exceed_length_to_compress)],
+                                torch.gather(value_states[:, :,  -(1 + recent_length + exceed_length_to_compress):-(1 + recent_length)], dim=-2, index=gather_indices),
+                                value_states[:, :, -(1 + recent_length):],
                             ], dim=-2)
+                            
+                            # attention weights [bsz, 1 + recent_length, seq_len]
+                            attn_weights = torch.cat([
+                                attn_weights[:, :,  :-(1 + recent_length + exceed_length_to_compress)],
+                                torch.gather(attn_weights[:, :,  -(1 + recent_length + exceed_length_to_compress):-(1 + recent_length)], dim=-1, index=recent2context_topk_indices[:, None, :].expand(-1, attn_weights.shape[1], -1)),
+                                attn_weights[:, :, -(1 + recent_length):],
+                            ], dim=-1)
+                            
                             next_decoder_cache[-1] = (key_states, value_states)
-                            past_kv_seq_lens[idx] = key_states.shape[-2] - gen_recent_length   
+                            past_kv_seq_lens[idx] = key_states.shape[-2] - recent_length   
+                        recent_attn_weights[idx] = attn_weights[:, -(1 + recent_length):]
 
             if output_attentions:
                 all_self_attns += (layer_outputs[1],)
@@ -862,6 +876,7 @@ class LlamaModel(LlamaPreTrainedModel):
             hidden_states=all_hidden_states,
             attentions=all_self_attns,
             past_kv_seq_lens=past_kv_seq_lens,
+            recent_attn_weights=recent_attn_weights,
         )
 
 
@@ -911,6 +926,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
         past_kv_seq_lens: Optional[List[int]] = None,
+        recent_attn_weights: Optional[List[torch.Tensor]] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         r"""
         Args:
@@ -956,6 +972,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
             past_kv_seq_lens=past_kv_seq_lens,
+            recent_attn_weights=recent_attn_weights,
         )
 
         hidden_states = outputs[0]
@@ -991,6 +1008,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
             past_kv_seq_lens=outputs.past_kv_seq_lens,
+            recent_attn_weights=outputs.recent_attn_weights,
         )
 
     def _update_model_kwargs_for_generation(
@@ -1004,6 +1022,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             outputs, model_kwargs, is_encoder_decoder=is_encoder_decoder, standardize_cache_format=standardize_cache_format
         )
         model_kwargs["past_kv_seq_lens"] = outputs.past_kv_seq_lens
+        model_kwargs["recent_attn_weights"] = outputs.recent_attn_weights
 
         return model_kwargs
 
@@ -1034,6 +1053,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
                 "use_cache": kwargs.get("use_cache"),
                 "attention_mask": attention_mask,
                 "past_kv_seq_lens": kwargs.get("past_kv_seq_lens", []),
+                "recent_attn_weights": kwargs.get("recent_attn_weights", []),
             }
         )
         return model_inputs

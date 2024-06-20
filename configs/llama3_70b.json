@@ -2,7 +2,7 @@
     "model": "llama3",
     "size": "70B",
     "prefill_stage": {
-        "prefill_recent_ratio": 0.2,
+        "recent_ratio": 0.2,
         "prefill_decay_ratio": 0.9,
         "prefill_decay_strategy": "cosine",
         "min_context_length": 64,
@@ -11,7 +11,6 @@
         "distance_weight": 1.2
     },
     "generation_stage": {
-        "gen_recent_ratio": 0.2,
         "gen_decay_ratio": 0.1,
         "gen_decay_strategy": "cosine",
         "gen_compress_ratio": 0.9,
