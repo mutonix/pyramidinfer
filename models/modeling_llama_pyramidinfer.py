@@ -772,7 +772,7 @@ class LlamaModel(LlamaPreTrainedModel):
                         else:
                             schedule_prefill_decay_ratio = prefill_decay_ratio
                         
-                        if idx != self.config.num_hidden_layers - 1 and (idx % layerwise_downsample_interval) == 0:
+                        if (idx % layerwise_downsample_interval) == 0:
                             attn_weights = layer_outputs[1].mean(dim=1) # average over attention heads
                             
                             recent2context_attn_weights = attn_weights[:, -(1 + recent_length):, :-(1 + recent_length)]
@@ -808,7 +808,7 @@ class LlamaModel(LlamaPreTrainedModel):
                     else:
                         ### generation stage ###
                         attn_weights = layer_outputs[1].mean(dim=1) # average over attention heads
-                        recent_attn_weights[idx] = torch.cat([recent_attn_weights[idx], torch.zeros((recent_attn_weights[idx].shape[0], recent_attn_weights[idx].shape[1], 1), device=recent_attn_weights[idx].device)], dim=-1)
+                        recent_attn_weights[idx] = torch.cat([recent_attn_weights[idx].to(attn_weights.device), torch.zeros((recent_attn_weights[idx].shape[0], recent_attn_weights[idx].shape[1], 1), device=attn_weights.device)], dim=-1)
                         attn_weights = torch.cat([recent_attn_weights[idx], attn_weights], dim=-2)                    
                         past_kv_seq_len = past_kv_seq_lens[idx]
                         current_kv_seq_len = next_decoder_cache[-1][0].shape[-2]
