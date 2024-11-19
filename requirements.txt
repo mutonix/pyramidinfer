@@ -1,5 +1,5 @@
-torch==2.0.1
-transformers==4.31.0
-accelerate==0.24.1
-sentencepiece==0.1.99
-bitsandbytes==0.41.1
+torch
+transformers
+accelerate
+sentencepiece
+bitsandbytes

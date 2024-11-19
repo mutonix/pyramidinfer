@@ -5,6 +5,7 @@ Dongjie Yang, Xiaodong Han, Yan Gao, Yao Hu, Shilin Zhang, Hai Zhao
 [![arXiv](https://img.shields.io/badge/arXiv-2110.06707-b31b1b.svg)](https://arxiv.org/abs/2405.12532)
 
 ## Updates
+- [2024-11-19] We update the implementation of PyramidInfer to be compatible with the latest version of Huggingface transformers `4.46.3`. We rename the legacy code to `modeling_llama_pyramidinfer_legacy.py` which is compatible with the old version of Huggingface transformers `4.31.0`. 
 - [2024-06-17] We release the code for PyramidInfer where the details can be found in [here](https://github.com/mutonix/pyramidinfer?tab=readme-ov-file#implementation-of-pyramidinfer).
 
 [WIP] This repository is still under construction. We will release the full code to evaluate the performance of PyramidInfer using the OpenCompass.

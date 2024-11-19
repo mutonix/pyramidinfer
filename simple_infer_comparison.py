@@ -95,7 +95,7 @@ As the ship entered orbit around Eridani Prime, the scientists eagerly prepared 
                 cache_dir=args.cache_dir,
                 load_in_8bit=True if '70' in args.model_name_or_path or '34' in args.model_name_or_path else False,
             )
-        pyramid_model.bfloat16().eval()
+        pyramid_model.eval()
         print("Pyramidinfer Model GPU Memory Per GPU (MB): ", f"{torch.cuda.max_memory_allocated(device=pyramid_model.device) / 1024 / 1024:.3f}")
         # pyramid_model = torch.compile(pyramid_model, mode="max-autotune")
         pyramid_model.config.pad_token_id = tokenizer.pad_token_id
@@ -116,7 +116,7 @@ As the ship entered orbit around Eridani Prime, the scientists eagerly prepared 
                 cache_dir=args.cache_dir,
                 load_in_8bit=True if '70' in args.model_name_or_path or '34' in args.model_name_or_path else False,
             )
-        original_model.bfloat16().eval()
+        original_model.eval()
         print("Original Model GPU Memory Per GPU:", f"{torch.cuda.max_memory_allocated(device=original_model.device) / 1024 / 1024:.3f}")
         # original_model = torch.compile(original_model, mode="max-autotune")
         original_model.config.pad_token_id = tokenizer.pad_token_id
