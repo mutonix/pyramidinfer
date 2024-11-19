@@ -21,7 +21,11 @@ Large Language Models (LLMs) have shown remarkable comprehension abilities but f
 ### run a demo
 We recommend using the PyramidInfer with a large batch size to see more significant memory reduction and efficiency improvement. 
 ```
-conda create -n pyramidinfer python=3.8 -y
+<!-- conda create -n pyramidinfer python=3.8 -y
+conda activate pyramidinfer
+pip install -r requirements_legacy.txt -->
+
+conda create -n pyramidinfer python=3.10 -y
 conda activate pyramidinfer
 pip install -r requirements.txt
 

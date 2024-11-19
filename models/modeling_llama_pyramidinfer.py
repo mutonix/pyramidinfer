@@ -1048,7 +1048,7 @@ class LlamaModel(LlamaPreTrainedModel):
                                 hidden_states = torch.cat([compressed_hidden_states, hidden_states[:, -(1 + recent_length):]], dim=1)
 
                         if past_kv_seq_lens is not None:
-                            past_kv_seq_lens.append(hidden_states.shape[1])
+                            past_kv_seq_lens.append(past_key_values.get_seq_length(-1))
                         if recent_attn_weights is not None:
                             recent_attn_weights.append(attn_weights[:, -(1 + recent_length):])
                     else:
