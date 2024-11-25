@@ -92,6 +92,7 @@ As the ship entered orbit around Eridani Prime, the scientists eagerly prepared 
                 args.model_name_or_path,
                 torch_dtype=torch.float16,
                 device_map="cuda:0",
+                attn_implementation="eager",
                 cache_dir=args.cache_dir,
                 load_in_8bit=True if '70' in args.model_name_or_path or '34' in args.model_name_or_path else False,
             )
@@ -113,6 +114,7 @@ As the ship entered orbit around Eridani Prime, the scientists eagerly prepared 
                 args.model_name_or_path,
                 torch_dtype=torch.float16,
                 device_map="cuda:1",
+                attn_implementation="eager",
                 cache_dir=args.cache_dir,
                 load_in_8bit=True if '70' in args.model_name_or_path or '34' in args.model_name_or_path else False,
             )
